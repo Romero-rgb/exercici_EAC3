@@ -5,12 +5,14 @@
 package eac3.gestors;
 
 import eac3.model.Pista;
+import net.xqj.basex.BaseXXQDataSource;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.xml.xquery.XQConnection;
-import javax.xml.xquery.XQException;
-import javax.xml.xquery.XQExpression;
+import javax.xml.xquery.*;
+
 /**
  * Classe que gestiona la persistència dels objectes de la classe model.Pista
  *
@@ -35,8 +37,29 @@ public class PistaManager {
      * @throws ManagerException en cas d'error, com per exemple clau duplicada
      */
     public void insert(Pista pista) throws ManagerException {
-        //TODO
-        throw new UnsupportedOperationException("Mètode no implementat");
+
+        String pistaxml = Utilitats.formaObjecteXML(pista);
+
+        String checkQuery = ARREL + "pistes/pista[@id='" + pista.getId() + "']";
+
+        String insertQuery = "insert node " + pistaxml + " as last into " + ARREL + "pistes";
+        try{
+            XQExpression exp = conn.createExpression();
+
+           XQResultSequence resultCheck = exp.executeQuery(checkQuery);
+
+            if (resultCheck.next()) {
+                exp.close();
+                throw  new ManagerException("Error al insertar pistas");
+            }
+
+            exp.executeQuery(insertQuery);
+
+            exp.close();
+
+        } catch (XQException ex) {
+            throw new ManagerException("Error al insertar la pista: " + ex.getMessage(), ex);
+        }
     }
 
     /**
@@ -46,8 +69,24 @@ public class PistaManager {
      * @throws ManagerException en cas d'error, com per exemple que no existeixi
      */
     public void delete(String id) throws ManagerException {
-        //TODO
-        throw new UnsupportedOperationException("Mètode no implementat");
+        String checkQuery = ARREL + "pistes/pista[@id='" + id + "']";
+
+        String deleteQuery = "delete node " + checkQuery;
+
+        try {
+            XQExpression exp = conn.createExpression();
+            XQResultSequence resultCheck = exp.executeQuery(checkQuery);
+
+            if (!resultCheck.next()) {
+                exp.close();
+                throw  new ManagerException("Error al esborrar la pista");
+            }
+
+            exp.executeQuery(deleteQuery);
+            exp.close();
+        } catch ( XQException ex) {
+            throw new ManagerException("Error al esborrar la pista: " + ex.getMessage(), ex);
+        }
     }
 
     /**
@@ -74,8 +113,24 @@ public class PistaManager {
      * @throws ManagerException en cas d'error, com per exemple que no existeixi
      */
     public Pista getPista(String id) throws ManagerException {
-        //TODO
-        throw new UnsupportedOperationException("Mètode no implementat");
+        String findQuery = ARREL + "pistes/pista[@id='" + id + "']";
+        try {
+            XQExpression exp = conn.createExpression();
+            XQResultSequence resultFind = exp.executeQuery(findQuery);
+
+            if (!resultFind.next()) {
+                exp.close();
+                throw  new ManagerException("No s'ha pogut trobar la pista");
+            }
+            String xmlPista = resultFind.getItemAsString(null);
+
+            exp.close();
+
+            return Utilitats.obteObjecte(xmlPista);
+
+        } catch (XQException ex) {
+            throw new ManagerException("Error al trobar la pista: " + ex.getMessage(), ex);
+        }
 
     }
 
@@ -86,8 +141,23 @@ public class PistaManager {
      * @return la llista de pistes
      */
     List<Pista> getPistesAmbRemuntador(String tipusRemuntador) throws ManagerException {
-        //TODO
-        throw new UnsupportedOperationException("Mètode no implementat");
+        String forFindQuery = ARREL + "pistes/pista[remuntadors/remuntador='" + tipusRemuntador + "']";
+        List<Pista> pistes = new ArrayList<Pista>();
+        try {
+            XQExpression exp = conn.createExpression();
+            XQResultSequence resultFind = exp.executeQuery(forFindQuery);
+
+
+            while (resultFind.next()) {
+                String xmlPista = resultFind.getItemAsString(null);
+                pistes.add(Utilitats.obteObjecte(xmlPista));
+            }
+
+            return pistes;
+
+        }catch (XQException ex) {
+            throw new ManagerException("Error al trobar les pistes: " + ex.getMessage(), ex);
+        }
 
     }
 }
